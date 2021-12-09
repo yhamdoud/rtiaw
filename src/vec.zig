@@ -73,6 +73,12 @@ fn Vector3(comptime T: type) type {
         pub fn lerp(a: Self, b: Self, t: f32) Self {
             return a.scale(1.0 - t).add(b.scale(t));
         }
+
+        pub const red = Self.init(1, 0, 0);
+        pub const green = Self.init(0, 1, 0);
+        pub const blue = Self.init(0, 0, 1);
+        pub const white = Self.init(1, 1, 1);
+        pub const black = Self.init(0, 0, 0);
     };
 }
 
