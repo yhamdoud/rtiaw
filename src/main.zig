@@ -1,4 +1,8 @@
 const std = @import("std");
+const vec = @import("vec.zig");
+
+const Vec3 = vec.Vec3;
+const Color = vec.Color;
 
 pub fn main() !void {
     const width: u32 = 256;
@@ -16,15 +20,17 @@ pub fn main() !void {
 
         var i: u32 = 0;
         while (i < width) : (i += 1) {
-            const r = @intToFloat(f32, i) / @intToFloat(f32, width - 1);
-            const g = @intToFloat(f32, height - 1 - j) / @intToFloat(f32, height - 1);
-            const b = 0.25;
+            const col = Color.init(
+                @intToFloat(f32, i) / @intToFloat(f32, width - 1),
+                @intToFloat(f32, height - 1 - j) / @intToFloat(f32, height - 1),
+                @intToFloat(f32, height - 1 - j) / @intToFloat(f32, height - 1),
+            );
 
-            var ir = @floatToInt(u8, 255.99 * r);
-            var ig = @floatToInt(u8, 255.99 * g);
-            var ib = @floatToInt(u8, 255.99 * b);
-
-            try stdout.writer().print("{} {} {}\n", .{ ir, ig, ib });
+            try stdout.writer().print("{} {} {}\n", .{
+                @floatToInt(u8, 255.99 * col.x),
+                @floatToInt(u8, 255.99 * col.y),
+                @floatToInt(u8, 255.99 * col.z),
+            });
         }
     }
 
