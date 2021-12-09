@@ -18,6 +18,12 @@ fn Vector3(comptime T: type) type {
             return Self{ .x = x, .y = y, .z = z };
         }
 
+        pub fn initAll(x: T) Self {
+            return Self.init(x, x, x);
+        }
+
+        // Vector arithmetic
+
         pub fn add(a: Self, b: Self) Self {
             return Self.init(a.x + b.x, a.y + b.y, a.z + b.z);
         }
@@ -38,8 +44,14 @@ fn Vector3(comptime T: type) type {
             );
         }
 
+        // Scalar arithmetic
+
         pub fn scale(a: Self, b: T) Self {
             return Self.init(a.x * b, a.y * b, a.z * b);
+        }
+
+        pub fn div(a: Self, b: T) Self {
+            return a.scale(@as(T, 1) / b);
         }
 
         pub fn len2(a: Self) T {
@@ -51,11 +63,15 @@ fn Vector3(comptime T: type) type {
         }
 
         pub fn normalize(a: Self) Self {
-            return a.scale(@as(T, 1) / len(a));
+            return a.div(len(a));
         }
 
         pub fn eql(a: Self, b: Self) bool {
             return std.meta.eql(a, b);
+        }
+
+        pub fn lerp(a: Self, b: Self, t: f32) Self {
+            return a.scale(1.0 - t).add(b.scale(t));
         }
     };
 }
