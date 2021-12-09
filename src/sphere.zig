@@ -1,15 +1,17 @@
 const Vec3 = @import("vec.zig").Vec3;
 const Ray = @import("ray.zig").Ray;
 const Range = @import("utils.zig").Range;
+const Material = @import("materials.zig").Material;
 
 pub const Sphere = struct {
     const Self = @This();
 
     center: Vec3,
     radius: f32,
+    material: Material,
 
-    pub fn init(center: Vec3, radius: f32) Self {
-        return Self{ .center = center, .radius = radius };
+    pub fn init(center: Vec3, radius: f32, material: Material) Self {
+        return Self{ .center = center, .radius = radius, .material = material };
     }
 
     pub fn hit(self: *const Self, ray: *const Ray, t: Range(f32), rec: *HitRecord) bool {
@@ -33,6 +35,7 @@ pub const Sphere = struct {
         rec.t = root;
         rec.point = ray.at(rec.t);
         rec.normal = rec.point.sub(self.center).div(self.radius);
+        rec.material = &self.material;
 
         return true;
     }
@@ -42,4 +45,5 @@ pub const HitRecord = struct {
     point: Vec3,
     normal: Vec3,
     t: f32,
+    material: *const Material,
 };

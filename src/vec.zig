@@ -14,6 +14,8 @@ fn Vector3(comptime T: type) type {
         y: T,
         z: T,
 
+        pub const zero = Vec3.initAll(0);
+
         pub fn init(x: T, y: T, z: T) Self {
             return Self{ .x = x, .y = y, .z = z };
         }
@@ -44,6 +46,11 @@ fn Vector3(comptime T: type) type {
             );
         }
 
+        /// Component-wise multiplication
+        pub fn mul(a: Self, b: Self) Self {
+            return Self.init(a.x * b.x, a.y * b.y, a.z * b.z);
+        }
+
         // Scalar arithmetic
 
         pub fn scale(a: Self, b: T) Self {
@@ -66,8 +73,23 @@ fn Vector3(comptime T: type) type {
             return a.div(len(a));
         }
 
+        pub fn sqrt(a: Self) Self {
+            return Self.init(@sqrt(a.x), @sqrt(a.y), @sqrt(a.z));
+        }
+
         pub fn eql(a: Self, b: Self) bool {
             return std.meta.eql(a, b);
+        }
+
+        pub fn approxEqAbs(a: Self, b: Self, eps: T) bool {
+            return std.math.approxEqAbs(T, a.x, b.x, eps) and
+                std.math.approxEqAbs(T, a.y, b.y, eps) and
+                std.math.approxEqAbs(T, a.z, b.z, eps);
+        }
+
+        /// Reflects vector `a` around the normal vector `b`.
+        pub fn reflect(a: Self, b: Self) Self {
+            return a.sub(b.scale(2 * a.dot(b)));
         }
 
         pub fn lerp(a: Self, b: Self, t: f32) Self {
