@@ -10,6 +10,7 @@ const Ray = @import("ray.zig").Ray;
 const Sphere = @import("sphere.zig").Sphere;
 const HitRecord = @import("sphere.zig").HitRecord;
 const Range = @import("utils.zig").Range;
+const Camera = @import("camera.zig").Camera;
 
 fn rayColor(ray: *const Ray, spheres: []const Sphere) Color {
     var t_range = Range(f32){ .min = 0, .max = std.math.inf(f32) };
@@ -43,26 +44,27 @@ pub fn main() !void {
     try spheres.append(Sphere.init(Vec3.init(0, 0, -1), 0.5));
     try spheres.append(Sphere.init(Vec3.init(0, -100.5, -1), 100));
 
-    const image_width: u32 = 400;
-    const image_height: u32 = 200;
+    const image_width: u32 = 600;
+    const image_height: u32 = 300;
     const aspect_ratio = @intToFloat(f32, image_width) / @intToFloat(f32, image_height);
+    const sample_count = 100;
 
-    const viewport_height = 2.0;
-    const viewport_width = aspect_ratio * viewport_height;
-    const focal_length = 1.0;
+    const camera = Camera.init(aspect_ratio);
 
-    const origin = Point3.initAll(0);
-    const horizontal = Vec3.init(viewport_width, 0, 0);
-    const vertical = Vec3.init(0, viewport_height, 0);
-    const lower_left_corner = origin
-        .sub(horizontal.div(2))
-        .sub(vertical.div(2))
-        .sub(Vec3.init(0, 0, focal_length));
+    var prng = std.rand.DefaultPrng.init(blk: {
+        var seed: u64 = undefined;
+        try std.os.getrandom(std.mem.asBytes(&seed));
+        break :blk seed;
+    });
+    const rand = &prng.random();
 
     var stdout = std.io.bufferedWriter(std.io.getStdOut().writer());
     var stderr = std.io.getStdErr();
 
     try stdout.writer().print("P3\n{} {}\n255\n", .{ image_width, image_height });
+
+    const image_width_inv = 1.0 / @intToFloat(f32, image_width - 1);
+    const image_height_inv = 1.0 / @intToFloat(f32, image_height - 1);
 
     var j: u32 = 0;
     while (j < image_height) : (j += 1) {
@@ -70,16 +72,17 @@ pub fn main() !void {
 
         var i: u32 = 0;
         while (i < image_width) : (i += 1) {
-            const u = @intToFloat(f32, i) / @intToFloat(f32, image_width - 1);
-            const v = @intToFloat(f32, image_height - 1 - j) / @intToFloat(f32, image_height - 1);
+            var col = Vec3.initAll(0);
 
-            const ray_end = lower_left_corner
-                .add(horizontal.scale(u))
-                .add(vertical.scale(v));
+            var s: u32 = 0;
+            while (s < sample_count) : (s += 1) {
+                const u = (@intToFloat(f32, i) + rand.float(f32)) * image_width_inv;
+                const v = (@intToFloat(f32, image_height - 1 - j) + rand.float(f32)) * image_height_inv;
+                const ray = camera.ray(u, v);
+                col = col.add(rayColor(&ray, spheres.items));
+            }
 
-            const ray = Ray{ .origin = origin, .dir = ray_end.sub(origin) };
-
-            const col = rayColor(&ray, spheres.items);
+            col = col.div(sample_count);
 
             try stdout.writer().print("{} {} {}\n", .{
                 @floatToInt(u8, 255.99 * col.x),
