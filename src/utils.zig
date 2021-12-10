@@ -34,6 +34,6 @@ pub fn randomVecInUnitSphere(random: *std.rand.Random) Vec3 {
         .scale(@sqrt(randomRange(Range(f32){ .min = 0, .max = 1 }, random)));
 }
 
-pub fn degreesToRadians(degrees: anytype) @TypeOf(degrees) {
+pub fn toRadians(degrees: anytype) @TypeOf(degrees) {
     return degrees * std.math.pi / @as(@TypeOf(degrees), 180);
 }

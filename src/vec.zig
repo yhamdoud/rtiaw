@@ -24,6 +24,10 @@ fn Vector3(comptime T: type) type {
             return Self.init(x, x, x);
         }
 
+        pub fn random(r: *std.rand.Random) Self {
+            return Self.init(r.float(T), r.float(T), r.float(T));
+        }
+
         // Vector arithmetic
 
         pub fn add(a: Self, b: Self) Self {
