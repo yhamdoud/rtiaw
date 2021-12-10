@@ -66,35 +66,37 @@ pub fn main() !void {
     var spheres = ArrayList(Sphere).init(&gpa.allocator);
     defer _ = spheres.deinit();
 
-    try spheres.append(Sphere.init(
-        Vec3.init(0, -100.5, -1),
-        100,
-        Material.lambertian(Vec3.init(0.8, 0.8, 0)),
-    ));
+    {
+        const s = [_]Sphere{
+            Sphere.init(
+                Vec3.init(0, -100.5, -1),
+                100,
+                Material.lambertian(Vec3.init(0.8, 0.8, 0)),
+            ),
+            Sphere.init(
+                Vec3.init(0, 0, -1),
+                0.5,
+                Material.lambertian(Vec3.init(0.1, 0.2, 0.5)),
+            ),
+            Sphere.init(
+                Vec3.init(-1, 0, -1),
+                -0.4,
+                Material.dielectric(1.5),
+            ),
+            Sphere.init(
+                Vec3.init(-1, 0, -1),
+                0.5,
+                Material.dielectric(1.5),
+            ),
+            Sphere.init(
+                Vec3.init(1, 0, -1),
+                0.5,
+                Material.metal(Vec3.init(0.8, 0.6, 0.2), 0.0),
+            ),
+        };
 
-    try spheres.append(Sphere.init(
-        Vec3.init(0, 0, -1),
-        0.5,
-        Material.lambertian(Vec3.init(0.1, 0.2, 0.5)),
-    ));
-
-    try spheres.append(Sphere.init(
-        Vec3.init(-1, 0, -1),
-        -0.4,
-        Material.dielectric(1.5),
-    ));
-
-    try spheres.append(Sphere.init(
-        Vec3.init(-1, 0, -1),
-        0.5,
-        Material.dielectric(1.5),
-    ));
-
-    try spheres.append(Sphere.init(
-        Vec3.init(1, 0, -1),
-        0.5,
-        Material.metal(Vec3.init(0.8, 0.6, 0.2), 0.0),
-    ));
+        try spheres.appendSlice(s[0..]);
+    }
 
     const image_width: u32 = 600;
     const image_height: u32 = 300;
@@ -102,7 +104,13 @@ pub fn main() !void {
     const sample_count = 50;
     const bounce_count = 20;
 
-    const camera = Camera.init(aspect_ratio);
+    const camera = Camera.init(Camera.Args{
+        .origin = Vec3.init(-2, 2, 1),
+        .target = Vec3.init(0, 0, -1),
+        .up = Vec3.init(0, 1, 0),
+        .vertical_fov = 90,
+        .aspect_ratio = aspect_ratio,
+    });
 
     var stdout = std.io.bufferedWriter(std.io.getStdOut().writer());
     var stderr = std.io.getStdErr();
