@@ -14,6 +14,8 @@ const Material = @import("materials.zig").Material;
 var random: *std.rand.Random = undefined;
 
 pub fn main() !void {
+    @setFloatMode(std.builtin.FloatMode.Optimized);
+
     var prng = std.rand.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.os.getrandom(std.mem.asBytes(&seed));
@@ -33,10 +35,10 @@ pub fn main() !void {
     const image_width: u32 = 600;
     const image_height: u32 = 300;
     const aspect_ratio = @intToFloat(f32, image_width) / @intToFloat(f32, image_height);
-    const sample_count = 50;
-    const bounce_count = 20;
+    const sample_count = 20;
+    const bounce_count = 10;
 
-    const camera = Camera.init(&Camera.Args{
+    const camera = Camera.init(&.{
         .origin = Vec3.init(13, 2, 3),
         .target = Vec3.init(0, 0, 0),
         .up = Vec3.init(0, 1, 0),
