@@ -34,7 +34,7 @@ pub const Sphere = struct {
 
         rec.t = root;
         rec.point = ray.at(rec.t);
-        rec.normal = rec.point.sub(self.center).div(self.radius);
+        rec.set_face_normal(ray, rec.point.sub(self.center).div(self.radius));
         rec.material = &self.material;
 
         return true;
@@ -45,5 +45,15 @@ pub const HitRecord = struct {
     point: Vec3,
     normal: Vec3,
     t: f32,
+    front_face: bool,
     material: *const Material,
+
+    pub fn set_face_normal(
+        self: *@This(),
+        ray: *const Ray,
+        outward_normal: Vec3,
+    ) void {
+        self.front_face = ray.dir.dot(outward_normal) < 0;
+        self.normal = if (self.front_face) outward_normal else outward_normal.neg();
+    }
 };

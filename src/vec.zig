@@ -73,6 +73,10 @@ fn Vector3(comptime T: type) type {
             return a.div(len(a));
         }
 
+        pub fn neg(a: Self) Self {
+            return a.scale(@as(T, -1));
+        }
+
         pub fn sqrt(a: Self) Self {
             return Self.init(@sqrt(a.x), @sqrt(a.y), @sqrt(a.z));
         }
@@ -87,9 +91,18 @@ fn Vector3(comptime T: type) type {
                 std.math.approxEqAbs(T, a.z, b.z, eps);
         }
 
-        /// Reflects vector `a` around the normal vector `b`.
-        pub fn reflect(a: Self, b: Self) Self {
-            return a.sub(b.scale(2 * a.dot(b)));
+        /// Reflects vector `v` around the normal vector `n`.
+        pub fn reflect(v: Self, n: Self) Self {
+            return v.sub(n.scale(2 * v.dot(n)));
+        }
+
+        pub fn refract(v: Self, n: Self, eta: f32) Self {
+            const cos_theta = @minimum(-v.dot(n), 1);
+            // Perpendicular and parallel parts of the refracted vector.
+            const perp = v.add(n.scale(cos_theta)).scale(eta);
+            const par = n.scale(-@sqrt(@fabs(1 - perp.len2())));
+
+            return perp.add(par);
         }
 
         pub fn lerp(a: Self, b: Self, t: f32) Self {

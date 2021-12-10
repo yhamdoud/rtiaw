@@ -36,11 +36,13 @@ fn rayColor(ray_in: *const Ray, spheres: []const Sphere, depth: u32) Color {
         var ray_out: Ray = undefined;
         var atten: Vec3 = undefined;
 
-        if (switch (material) {
+        const bounce = switch (material) {
             Material.Lambertian => |l| l.scatter(&rec, &atten, &ray_out, random),
-            Material.Metal => |m| m.scatter(ray_in, &rec, &atten, &ray_out),
-        })
-            return atten.mul(rayColor(&ray_out, spheres, depth - 1));
+            Material.Metal => |m| m.scatter(ray_in, &rec, &atten, &ray_out, random),
+            Material.Dielectric => |d| d.scatter(ray_in, &rec, &atten, &ray_out, random),
+        };
+
+        return if (bounce) atten.mul(rayColor(&ray_out, spheres, depth - 1)) else Vec3.zero;
     }
 
     const unit_dir = ray_in.dir.normalize();
@@ -73,26 +75,32 @@ pub fn main() !void {
     try spheres.append(Sphere.init(
         Vec3.init(0, 0, -1),
         0.5,
-        Material.lambertian(Vec3.init(0.7, 0.3, 0.3)),
+        Material.lambertian(Vec3.init(0.1, 0.2, 0.5)),
+    ));
+
+    try spheres.append(Sphere.init(
+        Vec3.init(-1, 0, -1),
+        -0.4,
+        Material.dielectric(1.5),
     ));
 
     try spheres.append(Sphere.init(
         Vec3.init(-1, 0, -1),
         0.5,
-        Material.metal(Vec3.init(0.8, 0.8, 0.8)),
+        Material.dielectric(1.5),
     ));
 
     try spheres.append(Sphere.init(
         Vec3.init(1, 0, -1),
         0.5,
-        Material.metal(Vec3.init(0.8, 0.6, 0.2)),
+        Material.metal(Vec3.init(0.8, 0.6, 0.2), 0.0),
     ));
 
     const image_width: u32 = 600;
     const image_height: u32 = 300;
     const aspect_ratio = @intToFloat(f32, image_width) / @intToFloat(f32, image_height);
-    const sample_count = 100;
-    const bounce_count = 50;
+    const sample_count = 50;
+    const bounce_count = 20;
 
     const camera = Camera.init(aspect_ratio);
 

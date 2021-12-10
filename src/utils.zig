@@ -28,3 +28,8 @@ pub fn randomUnitVec(random: *std.rand.Random) Vec3 {
         randomRange(range, random),
     ).normalize();
 }
+
+pub fn randomVecInUnitSphere(random: *std.rand.Random) Vec3 {
+    return randomUnitVec(random)
+        .scale(@sqrt(randomRange(Range(f32){ .min = 0, .max = 1 }, random)));
+}
