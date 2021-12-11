@@ -16,7 +16,6 @@ pub const Camera = struct {
     v: Vec3,
     w: Vec3,
     lens_radius: f32,
-    random: *std.rand.Random,
 
     pub const Args = struct {
         origin: Vec3,
@@ -26,7 +25,6 @@ pub const Camera = struct {
         aspect_ratio: f32,
         aperture: f32,
         focus_distance: f32,
-        random: *std.rand.Random,
     };
 
     pub fn init(args: *const Args) Self {
@@ -56,14 +54,13 @@ pub const Camera = struct {
             .v = v,
             .w = w,
             .lens_radius = args.aperture / 2,
-            .random = args.random,
         };
     }
 
-    pub fn ray(self: *const Self, s: f32, t: f32) Ray {
+    pub fn ray(self: *const Self, s: f32, t: f32, random: *std.rand.Random) Ray {
         // Generate random rays originating from inside a disk centered at the
         // camera origin to simulate defocus blur.
-        var disk = utils.randomVecInUnitSphere(self.random);
+        var disk = utils.randomVecInUnitSphere(random);
         disk.z = 0;
         disk = disk.scale(self.lens_radius);
 
