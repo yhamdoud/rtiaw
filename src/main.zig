@@ -3,6 +3,7 @@ const std = @import("std");
 const ArrayList = std.ArrayList;
 
 const utils = @import("utils.zig");
+const c = @import("c.zig");
 
 const Vec3 = @import("vec.zig").Vec3;
 const Ray = @import("ray.zig").Ray;
@@ -13,8 +14,55 @@ const Material = @import("materials.zig").Material;
 
 var random: *std.rand.Random = undefined;
 
+export fn glfwErrorCallback(err: c_int, description: [*c]const u8) void {
+    std.debug.panic("GLFW error ({}): {s}\n", .{ err, description });
+}
+
 pub fn main() !void {
     @setFloatMode(std.builtin.FloatMode.Optimized);
+
+    const width: i32 = 600;
+    const height: i32 = 300;
+
+    _ = c.glfwSetErrorCallback(glfwErrorCallback);
+
+    if (c.glfwInit() == 0) return error.GlfwInitFailed;
+    defer c.glfwTerminate();
+
+    c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
+    c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
+    c.glfwWindowHint(c.GLFW_FLOATING, 1);
+
+    const window = c.glfwCreateWindow(width, height, "rtiaw", null, null) orelse
+        return error.GlfwCreateWindowFailed;
+    defer c.glfwDestroyWindow(window);
+
+    c.glfwMakeContextCurrent(window);
+
+    if (c.gladLoadGLLoader(@ptrCast(
+        fn ([*c]const u8) callconv(.C) ?*c_void,
+        c.glfwGetProcAddress,
+    )) == 0) return error.GlInitFailed;
+
+    var pbo: c_uint = undefined;
+    c.glGenBuffers(1, &pbo);
+    c.glBindBuffer(c.GL_PIXEL_UNPACK_BUFFER, pbo);
+
+    const buf_size = width * height * 4;
+    const flags: c_uint = c.GL_MAP_WRITE_BIT | c.GL_MAP_PERSISTENT_BIT |
+        c.GL_MAP_COHERENT_BIT;
+
+    c.glNamedBufferStorage(pbo, buf_size, null, flags);
+    const mapped_buf = @ptrCast([*]u8, c.glMapNamedBufferRange(pbo, 0, buf_size, flags).?);
+
+    var tex: c_uint = undefined;
+    c.glCreateTextures(c.GL_TEXTURE_2D, 1, &tex);
+    c.glTextureStorage2D(tex, 1, c.GL_RGBA8, width, height);
+
+    var framebuf: c_uint = undefined;
+    c.glGenFramebuffers(1, &framebuf);
+    c.glBindFramebuffer(c.GL_READ_FRAMEBUFFER, framebuf);
+    c.glNamedFramebufferTexture(framebuf, c.GL_COLOR_ATTACHMENT0, tex, 0);
 
     var prng = std.rand.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
@@ -32,9 +80,7 @@ pub fn main() !void {
 
     try initializeScene(&spheres);
 
-    const image_width: u32 = 600;
-    const image_height: u32 = 300;
-    const aspect_ratio = @intToFloat(f32, image_width) / @intToFloat(f32, image_height);
+    const aspect_ratio = @intToFloat(f32, width) / @intToFloat(f32, height);
     const sample_count = 20;
     const bounce_count = 10;
 
@@ -49,26 +95,28 @@ pub fn main() !void {
         .random = random,
     });
 
-    var stdout = std.io.bufferedWriter(std.io.getStdOut().writer());
     var stderr = std.io.getStdErr();
 
-    try stdout.writer().print("P3\n{} {}\n255\n", .{ image_width, image_height });
+    const image_width_inv = 1.0 / @intToFloat(f32, width - 1);
+    const image_height_inv = 1.0 / @intToFloat(f32, height - 1);
 
-    const image_width_inv = 1.0 / @intToFloat(f32, image_width - 1);
-    const image_height_inv = 1.0 / @intToFloat(f32, image_height - 1);
+    var j: i32 = height - 1;
+    while (j >= 0 and c.glfwWindowShouldClose(window) == 0) : (j -= 1) {
+        defer {
+            c.glfwPollEvents();
+            c.glfwSwapBuffers(window);
+        }
 
-    var j: u32 = 0;
-    while (j < image_height) : (j += 1) {
-        try stderr.writer().print("\rScanlines remaining: {}", .{image_height - 1 - j});
+        try stderr.writer().print("\rScanlines remaining: {}", .{j});
 
-        var i: u32 = 0;
-        while (i < image_width) : (i += 1) {
+        var i: i32 = 0;
+        while (i < width) : (i += 1) {
             var col = Vec3.initAll(0);
 
-            var s: u32 = 0;
+            var s: i32 = 0;
             while (s < sample_count) : (s += 1) {
                 const u = (@intToFloat(f32, i) + random.float(f32)) * image_width_inv;
-                const v = (@intToFloat(f32, image_height - 1 - j) + random.float(f32)) * image_height_inv;
+                const v = (@intToFloat(f32, j) + random.float(f32)) * image_height_inv;
                 const ray = camera.ray(u, v);
                 col = col.add(rayColor(&ray, spheres.items, bounce_count));
             }
@@ -76,15 +124,21 @@ pub fn main() !void {
             col = col.div(sample_count)
                 .sqrt(); // Gamma correction.
 
-            try stdout.writer().print("{} {} {}\n", .{
-                @floatToInt(u8, 255.99 * col.x),
-                @floatToInt(u8, 255.99 * col.y),
-                @floatToInt(u8, 255.99 * col.z),
-            });
+            const offset = @intCast(usize, (i + j * width) * 4);
+
+            mapped_buf[offset + 0] = @floatToInt(u8, 255.99 * col.x);
+            mapped_buf[offset + 1] = @floatToInt(u8, 255.99 * col.y);
+            mapped_buf[offset + 2] = @floatToInt(u8, 255.99 * col.z);
+            mapped_buf[offset + 3] = 1;
         }
+
+        const zeroPtr = @intToPtr(*allowzero c_void, 0);
+        c.glTextureSubImage2D(tex, 0, 0, 0, width, height, c.GL_RGBA, c.GL_UNSIGNED_BYTE, zeroPtr);
+        c.glBlitNamedFramebuffer(framebuf, 0, 0, 0, width, height, 0, 0, width, height, c.GL_COLOR_BUFFER_BIT, c.GL_NEAREST);
     }
 
-    try stdout.flush();
+    while (c.glfwWindowShouldClose(window) == 0)
+        c.glfwPollEvents();
 }
 
 fn initializeScene(spheres: *ArrayList(Sphere)) !void {

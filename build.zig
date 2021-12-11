@@ -14,6 +14,10 @@ pub fn build(b: *std.build.Builder) void {
     const exe = b.addExecutable("rtiaw", "src/main.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
+    exe.linkSystemLibrary("c");
+    exe.linkSystemLibrary("glfw3");
+    exe.addCSourceFile("extern/glad/src/glad.c", &[_][]const u8{});
+    exe.addIncludeDir("extern/glad/include");
     exe.install();
 
     const run_cmd = exe.run();
